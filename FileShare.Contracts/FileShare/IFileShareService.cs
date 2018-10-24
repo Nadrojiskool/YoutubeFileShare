@@ -20,9 +20,9 @@ namespace FileShare.Contracts.FileShare
         FilePartModel GetFilePartBytes(FilePart filePart, FileMetaData fileMeta);
 
         [OperationContract(IsOneWay = true)]
-        void ForwardResult(FileSearchResultModel result);
+        void PingHostService(HostInfo info, bool isCallback = false);
 
         [OperationContract(IsOneWay = true)]
-        void PingHostService(HostInfo info);
+        void ForwardResult(FileSearchResultModel result);
     }
 }

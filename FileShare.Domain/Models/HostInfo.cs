@@ -11,5 +11,6 @@ namespace FileShare.Domain.Models
         public string ID { get; set; }
         public string Uri { get; set; }
         public int Port { get; set; }
+        public object Callback { get; set; }
     }
 }

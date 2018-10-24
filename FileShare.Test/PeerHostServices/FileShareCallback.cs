@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using FileShare.Contracts.FileShare;
+using FileShare.Domain.FileSearch;
 
 namespace FileShare.Test.PeerHostServices
 {
@@ -18,6 +19,11 @@ namespace FileShare.Test.PeerHostServices
             }
 
             return false;
+        }
+
+        public bool ForwardSearchResult(FileSearchResultModel searchResults)
+        {
+            throw new NotImplementedException();
         }
     }
 }

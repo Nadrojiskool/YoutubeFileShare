@@ -10,7 +10,8 @@ using FileShare.Domain.Models;
 
 namespace FileShare.Logic.FileShareManager
 {
-    public delegate void CurrentHostInfo(HostInfo info);
+    public delegate void CurrentHostInfo(HostInfo info, bool isCallback = false);
+    public delegate void CurrentClientInfo(string peerID, IFileShareServiceCallback callback);
 
     [ServiceBehavior(ConcurrencyMode = ConcurrencyMode.Multiple, InstanceContextMode = InstanceContextMode.Single)]
     public class FileShareManager : IFileShareService
@@ -32,17 +33,30 @@ namespace FileShare.Logic.FileShareManager
         {
 
         }
-        public void PingHostService(HostInfo info)
+        public void PingHostService(HostInfo info, bool isCallback)
         {
             //Console.Write($"Peer : {info.ID}    Server : {info.Uri}:{info.Port}\n");
             var callback = OperationContext.Current.GetCallbackChannel<IFileShareServiceCallback>();
             if (callback != null)
             {
-                if (callback.IsConnected($"Message from Server at {DateTime.UtcNow:D}"))
+                if (isCallback)
                 {
-                    _currentHost.Add(info.ID, info);
-                    CurrentHostUpdate?.Invoke(info);
+                    if(callback.IsConnected($"Ping Back Direct Connection: {DateTime.UtcNow:T}"))
+                    {
+                        info.Callback = callback;
+                        CurrentHostUpdate?.Invoke(info, true);
+                    }
                 }
+                else
+                {
+                    if (callback.IsConnected($"Direct Peer Connection Established at {DateTime.UtcNow:D}"))
+                    {
+                        _currentHost.Add(info.ID, info);
+                        info.Callback = callback;
+                        CurrentHostUpdate?.Invoke(info);
+                    }
+                }
+
             }
         }
     }

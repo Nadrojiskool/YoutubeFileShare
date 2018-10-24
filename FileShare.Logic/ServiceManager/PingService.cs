@@ -24,8 +24,9 @@ namespace FileShare.Logic.ServiceManager
 
         public PingService()
         {
+            rnd = new Random();
             ClientHostDetails = new ObservableCollection<HostInfo>();
-            AvailableFileMetaData = new FileSample().GetFileMetaData();
+            AvailableFileMetaData = new FileSample().GetFileMetaData().Take(rnd.Next(1, _count)).ToList();
         }
 
         /*public PingService(HostInfo info)
@@ -58,11 +59,26 @@ namespace FileShare.Logic.ServiceManager
 
         public void SearchFiles(string searchTerm, string peerID)
         {
-            if (ClientHostDetails.Any())
+            if (ClientHostDetails.Any()) // Removed in Tutorial //
             {
-                var info = ClientHostDetails.First(p => p.ID == peerID);
-                var result = (from file in AvailableFileMetaData where searchTerm == file.FileName select file);
-                if (info != null)
+                // var info = ClientHostDetails.First(p => p.ID == peerID);
+                var result = (from file in AvailableFileMetaData
+                        where searchTerm == file.FileName
+                              || file.FileName.Contains(searchTerm)
+                              || file.FileName.IndexOf(searchTerm, StringComparison.CurrentCulture) > 0
+                        select file);
+
+                if (result.Any())
+                {
+                    FileSearchResultModel searchResult = new FileSearchResultModel
+                    {
+                        PeerID = peerID,
+                        Files = (ObservableCollection<FileMetaData>) result
+                    };
+
+                    FileSearchResult?.Invoke(searchResult);
+                }
+                /*if (info != null)
                 {
                     if (result.Any())
                     {
@@ -72,7 +88,7 @@ namespace FileShare.Logic.ServiceManager
                             Files = (ObservableCollection<FileMetaData>)result
                         };
                     }
-                }
+                }*/
             }
         }
     }

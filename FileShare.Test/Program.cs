@@ -19,7 +19,7 @@ namespace FileShare.Test
     {
         static void Main(string[] args)
         {
-            if (Process.GetProcessesByName(Process.GetCurrentProcess().ProcessName).Count() < 3)
+            if (Process.GetProcessesByName(Process.GetCurrentProcess().ProcessName).Count() < 5)
             {
                 Process.Start("FileShare.Test.exe");
             }

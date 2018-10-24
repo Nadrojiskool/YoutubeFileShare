@@ -16,5 +16,7 @@ namespace FileShare.Domain.FileSearch
         public HostInfo ServiceHost { get; set; }
         [DataMember]
         public ObservableCollection<FileMetaData> Files { get; set; }
+        [DataMember]
+        public string PeerID { get; set; }
     }
 }

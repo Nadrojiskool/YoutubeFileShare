@@ -17,10 +17,10 @@ namespace FileShare.Test.PeerHostServices
     public class PeerServiceHost
     {
         private AutoResetEvent _resetEvent = new AutoResetEvent(false);
-        private bool _isStarted = false;
-        private int _port = 0;
-        FileShareManager _file = new FileShareManager();
-        Dictionary<string, HostInfo> _currentHost = new Dictionary<string, HostInfo>();
+        bool _isStarted = false;
+        private readonly int _port = 0;
+        private Dictionary<string, HostInfo> _currentHost = new Dictionary<string, HostInfo>();
+        readonly FileShareManager _file = new FileShareManager();
 
         public PeerServiceHost(IPeerRegistrationRepository peerRegistration, IPeerNameResolverRepository peerNameResolver, IPeerConfigurationService<PingService> peerConfigurationService)
         {
@@ -70,10 +70,22 @@ namespace FileShare.Test.PeerHostServices
                         ConfigurePeer.PingService.PeerEndpointInformation += PingServiceOnPeerEndpointInformation;
                     }
 
-                    if (StartFileShareService(_port, RegisterPeer.PeerUri))
+                    Thread thd = new Thread(new ThreadStart(() =>
                     {
-                        Console.WriteLine("File Service Host Started..");
-                    }
+                        if (StartFileShareService(_port, RegisterPeer.PeerUri))
+                        {
+                            Console.WriteLine("File Service Host Started..");
+                            var files = ConfigurePeer.PingService.AvailableFileMetaData;
+                            if (files.Any())
+                            {
+                                Console.WriteLine($"\n Available Files   {files.Count}");
+                            }
+                            files.ToList().ForEach(fp =>
+                            {
+                                Console.WriteLine($"Filename: {fp.FileName}     Size: {fp.FileLength}");
+                            });
+                        }
+                    }));
                 }
                 else
                 {
@@ -83,9 +95,10 @@ namespace FileShare.Test.PeerHostServices
         }
         private void PingServiceOnPeerEndpointInformation(HostInfo endpointInfo)
         {
-            Console.Clear();
-            if (!_currentHost.Any())
+            Console.WriteLine("\n");
+            if (endpointInfo.Callback == null)
             {
+                Console.WriteLine($"Testing {endpointInfo.Uri}");
                 var uri = $"net.tcp://{endpointInfo.Uri}:{endpointInfo.Port}/FileShare";
                 var callback = new InstanceContext(new FileShareCallback());
                 var binding = new NetTcpBinding(SecurityMode.None);
@@ -94,27 +107,19 @@ namespace FileShare.Test.PeerHostServices
                 var proxy = channel.CreateChannel(endpoint);
                 if (proxy != null)
                 {
-                    HostInfo info = new HostInfo
+                    var infos = new HostInfo
                     {
                         ID = ConfigurePeer.Peer.PeerID,
                         Port = _port,
                         Uri = RegisterPeer.PeerUri
                     };
-                    proxy.PingHostService(info);
-                    Console.WriteLine($"{_currentHost.Count} Host(s) Currently Connected.");
-                    _currentHost.ToList().ForEach(p =>
-                    {
-                        Console.WriteLine($"Host ID : {p.Key}   Endpoint : {p.Value.Uri}:{p.Value.Port}");
-                    });
+
+                    proxy.PingHostService(infos, true);
                 }
             }
             else
             {
-                if (_currentHost.Any(p => p.Key == endpointInfo.ID))
-                {
-                    Console.WriteLine("Host Already Exists.");
-                }
-                else
+                if (!_currentHost.Any())
                 {
                     var uri = $"net.tcp://{endpointInfo.Uri}:{endpointInfo.Port}/FileShare";
                     var callback = new InstanceContext(new FileShareCallback());
@@ -136,6 +141,37 @@ namespace FileShare.Test.PeerHostServices
                         {
                             Console.WriteLine($"Host ID : {p.Key}   Endpoint : {p.Value.Uri}:{p.Value.Port}");
                         });
+                    }
+                }
+                else
+                {
+                    if (_currentHost.Any(p => p.Key == endpointInfo.ID))
+                    {
+                        Console.WriteLine("Host Already Exists.");
+                    }
+                    else
+                    {
+                        var uri = $"net.tcp://{endpointInfo.Uri}:{endpointInfo.Port}/FileShare";
+                        var callback = new InstanceContext(new FileShareCallback());
+                        var binding = new NetTcpBinding(SecurityMode.None);
+                        var channel = new DuplexChannelFactory<IFileShareService>(callback, binding);
+                        var endpoint = new EndpointAddress(uri);
+                        var proxy = channel.CreateChannel(endpoint);
+                        if (proxy != null)
+                        {
+                            HostInfo info = new HostInfo
+                            {
+                                ID = ConfigurePeer.Peer.PeerID,
+                                Port = _port,
+                                Uri = RegisterPeer.PeerUri
+                            };
+                            proxy.PingHostService(info);
+                            Console.WriteLine($"{_currentHost.Count} Host(s) Currently Connected.");
+                            _currentHost.ToList().ForEach(p =>
+                            {
+                                Console.WriteLine($"Host ID : {p.Key}   Endpoint : {p.Value.Uri}:{p.Value.Port}");
+                            });
+                        }
                     }
                 }
             }
@@ -161,26 +197,55 @@ namespace FileShare.Test.PeerHostServices
             return false;
         }
 
-        private void FileOnCurrentHostUpdate(HostInfo info)
+        private void FileOnCurrentHostUpdate(HostInfo info, bool isCallback)
         {
-            Console.Clear();
-            if (info != null && _currentHost.All(p => p.Key != info.ID))
+            if (isCallback)
             {
-                _currentHost.Add(info.ID, info);
-                Console.WriteLine($"{_currentHost.Count} Host(s) Currently Available.");
-                _currentHost.ToList().ForEach(p =>
+                var uri = $"net.tcp://{info.Uri}:{info.Port}/FileShare";
+                var callback = new InstanceContext(new FileShareCallback());
+                var binding = new NetTcpBinding(SecurityMode.None);
+                var channel = new DuplexChannelFactory<IFileShareService>(callback, binding);
+                var endpoint = new EndpointAddress(uri);
+                var proxy = channel.CreateChannel(endpoint);
+                if (proxy != null)
                 {
-                    Console.WriteLine($"Host ID : {p.Key}   Endpoint : {p.Value.Uri}:{p.Value.Port}");
-                });
+                    HostInfo infos = new HostInfo
+                    {
+                        ID = ConfigurePeer.Peer.PeerID,
+                        Port = _port,
+                        Uri = RegisterPeer.PeerUri
+                    };
+
+                    proxy.PingHostService(infos);
+                    _currentHost.Add(info.ID, info);
+                    Console.WriteLine($"{_currentHost.Count(p => p.Value.Callback != null)} Host with Direct Connection");
+                    Console.WriteLine($"{_currentHost.Count} Hosts Available");
+                    _currentHost.Distinct().ToList().ForEach(p =>
+                    {
+                        Console.WriteLine($"Host Info, ID: {p.Key}      Host: {p.Value.Uri}:{p.Value.Port}");
+                    });
+                }
             }
-            else if (!_currentHost.Any())
+            else
             {
-                if (info != null) _currentHost.Add(info.ID, info);
-                Console.WriteLine($"{_currentHost.Count} Host(s) Currently Available.");
-                _currentHost.ToList().ForEach(p =>
+                if (info != null && _currentHost.All(p => p.Key != info.ID))
                 {
-                    Console.WriteLine($"Host ID : {p.Key}   Endpoint : {p.Value.Uri}:{p.Value.Port}");
-                });
+                    _currentHost.Add(info.ID, info);
+                    Console.WriteLine($"{_currentHost.Count} Host(s) Currently Available.");
+                    _currentHost.ToList().ForEach(p =>
+                    {
+                        Console.WriteLine($"Host ID : {p.Key}   Endpoint : {p.Value.Uri}:{p.Value.Port}");
+                    });
+                }
+                else if (!_currentHost.Any())
+                {
+                    if (info != null) _currentHost.Add(info.ID, info);
+                    Console.WriteLine($"{_currentHost.Count} Host(s) Currently Available.");
+                    _currentHost.ToList().ForEach(p =>
+                    {
+                        Console.WriteLine($"Host ID : {p.Key}   Endpoint : {p.Value.Uri}:{p.Value.Port}");
+                    });
+                }
             }
         }
 
