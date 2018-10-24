@@ -8,6 +8,7 @@ using System.Net;
 using FileShare.Contracts.Services;
 using FileShare.Domain.FileSearch;
 using FileShare.Domain.Models;
+using FileShare.SampleData;
 
 namespace FileShare.Logic.ServiceManager
 {
@@ -18,10 +19,13 @@ namespace FileShare.Logic.ServiceManager
     {
         public event OnPeerInfo PeerEndpointInformation;
         public event FileSearchResultDelegate FileSearchResult;
+        private Random rnd;
+        private int _count = new FileSample().GetFileMetaData().Count;
 
         public PingService()
         {
             ClientHostDetails = new ObservableCollection<HostInfo>();
+            AvailableFileMetaData = new FileSample().GetFileMetaData();
         }
 
         /*public PingService(HostInfo info)
@@ -49,7 +53,7 @@ namespace FileShare.Logic.ServiceManager
         }
         
         public HostInfo FileServiceHost { get; set; }
-        public ObservableCollection<FileMetaData> AvailableFileMetaData { get; set; }
+        public IList<FileMetaData> AvailableFileMetaData { get; set; }
         public ObservableCollection<HostInfo> ClientHostDetails { get; set; }
 
         public void SearchFiles(string searchTerm, string peerID)

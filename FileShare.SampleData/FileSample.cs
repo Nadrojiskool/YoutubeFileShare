@@ -8,12 +8,12 @@ using FileShare.Domain.Models;
 
 namespace FileShare.SampleData
 {
-    public static class FileSample
+    public class FileSample
     {
-        private static ObservableCollection<File> _availableFiles = new ObservableCollection<File>();
-        private static ObservableCollection<FileMetaData> _metaDatas = new ObservableCollection<FileMetaData>();
+        private ObservableCollection<File> _availableFiles = new ObservableCollection<File>();
+        private ObservableCollection<FileMetaData> _metaDatas = new ObservableCollection<FileMetaData>();
 
-        public static ObservableCollection<File> GetAvailableFiles()
+        public ObservableCollection<File> GetAvailableFiles()
         {
             if (! _availableFiles.Any())
             {
@@ -36,7 +36,7 @@ namespace FileShare.SampleData
             return _availableFiles;
         }
 
-        public static ObservableCollection<FileMetaData> GetFileMetaData()
+        public ObservableCollection<FileMetaData> GetFileMetaData()
         {
             if (! _metaDatas.Any())
             {
